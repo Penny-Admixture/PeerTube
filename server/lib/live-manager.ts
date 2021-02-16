@@ -16,7 +16,7 @@ import { VideoModel } from '@server/models/video/video'
 import { VideoFileModel } from '@server/models/video/video-file'
 import { VideoLiveModel } from '@server/models/video/video-live'
 import { VideoStreamingPlaylistModel } from '@server/models/video/video-streaming-playlist'
-import { MStreamingPlaylist, MUserId, MVideoLive, MVideoLiveVideo } from '@server/types/models'
+import { MStreamingPlaylist, MStreamingPlaylistVideo, MUserId, MVideoLive, MVideoLiveVideo } from '@server/types/models'
 import { VideoState, VideoStreamingPlaylistType } from '@shared/models'
 import { federateVideoIfNeeded } from './activitypub/videos'
 import { buildSha256Segment } from './hls'
@@ -24,7 +24,7 @@ import { JobQueue } from './job-queue'
 import { cleanupLive } from './job-queue/handlers/video-live-ending'
 import { PeerTubeSocket } from './peertube-socket'
 import { isAbleToUploadVideo } from './user'
-import { getHLSDirectory } from './video-paths'
+import { generateVideoFilename, getHLSDirectory } from './video-paths'
 import { VideoTranscodingProfilesManager } from './video-transcoding-profiles'
 
 import memoizee = require('memoizee')
@@ -277,7 +277,7 @@ class LiveManager {
     return this.runMuxing({
       sessionId,
       videoLive,
-      playlist: videoStreamingPlaylist,
+      playlist: Object.assign(videoStreamingPlaylist, { Video: video }),
       rtmpUrl,
       fps,
       allResolutions
@@ -287,7 +287,7 @@ class LiveManager {
   private async runMuxing (options: {
     sessionId: string
     videoLive: MVideoLiveVideo
-    playlist: MStreamingPlaylist
+    playlist: MStreamingPlaylistVideo
     rtmpUrl: string
     fps: number
     allResolutions: number[]
@@ -311,6 +311,7 @@ class LiveManager {
         resolution,
         size: -1,
         extname: '.ts',
+        filename: generateVideoFilename(playlist, true, resolution, '.mp4'),
         infoHash: null,
         fps,
         videoStreamingPlaylistId: playlist.id
